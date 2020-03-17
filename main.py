@@ -6,7 +6,6 @@ from flask_apscheduler import APScheduler
 config = json.load(open('config.json','r'))
 
 
-
 UniFi_api = Unifi_API(username=config["username"], password=config["password"], baseurl=config["baseurl"], site=config["site"], verify_ssl=config["verify_ssl"])
 
 
