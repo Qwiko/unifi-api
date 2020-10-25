@@ -37,6 +37,7 @@ class API(object):
         self._site = site
         self._verify_ssl = verify_ssl
         self._baseurl = baseurl
+        #print(username)
         self._session = Session()
         # print(self.__dict__)
         # print(self._login_data)
@@ -64,9 +65,10 @@ class API(object):
 
         :return: None
         """
-        #print("logging in")
+
         try:
             self._current_status_code = self._session.post("{}/api/login".format(self._baseurl), data=json.dumps(self._login_data), verify=self._verify_ssl).status_code
+            #print()
             if self._current_status_code == 200:
                 self.connected = True
                 #print("Logged in")
@@ -96,6 +98,7 @@ class API(object):
         #print(r.json())
         data = r.json()['data']
         #print(data)
+        password = "error"
         try:
             password = data[0]["x_password"]
         except IndexError:
