@@ -47,7 +47,7 @@ def show_Password():
 def password():
     status = getStatus()
     if status["status"] == "Disconnected":
-        return {"password": "error"}
+        return {"error": "Could not recieve password"}, 404
 
     if request.method == 'GET':        
         return UniFi_api.get_guest_password()
