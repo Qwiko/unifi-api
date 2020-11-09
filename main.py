@@ -59,8 +59,8 @@ def password():
 
 
 if __name__ == '__main__':
-    app.apscheduler.add_job(func=monthlypasswordchange, trigger="cron", day="1", id="monthlypasswordchange")
-    app.apscheduler.add_job(func=checkStatus, trigger="cron", minute="*/10", id="checkStatus")
+    #app.apscheduler.add_job(func=monthlypasswordchange, trigger="cron", day="1", id="monthlypasswordchange")
+    app.apscheduler.add_job(func=checkStatus, trigger="cron", day="*/1", id="checkStatus")
     checkStatus()
-    app.run(debug=True,host="0.0.0.0", port=5000)
+    app.run(debug=False,host="0.0.0.0", port=5000)
     
