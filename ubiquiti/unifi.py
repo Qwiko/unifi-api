@@ -67,17 +67,19 @@ class API(object):
         """
 
         try:
-            self._current_status_code = self._session.post("{}/api/login".format(self._baseurl), data=json.dumps(self._login_data), verify=self._verify_ssl).status_code
+            response = self._session.post("{}/api/auth/login".format(self._baseurl), json=self._login_data, verify=self._verify_ssl)
+            self._current_status_code = response.status_code
             #print()
             if self._current_status_code == 200:
                 self.connected = True
-                #print("Logged in")
             if self._current_status_code == 400:
                 self.connected = False
                 raise LoggedInException("Failed to log in to api with provided credentials")
+            if self._current_status_code == 401:
+                self.connected = False
+                raise LoggedInException("Invalid username or password")
         except requests.exceptions.ConnectionError:
             self.connected = False
-            #print("Failed to login")
 
 
     def logout(self):
@@ -92,10 +94,10 @@ class API(object):
 
     def get_guest_password(self):
         #Get request
-        #api/s/{site}/rest/setting
 
-        r = self._session.get("{}/api/s/{}/get/setting/guest_access".format(self._baseurl, self._site, verify=self._verify_ssl), data="json={}")
-        #print(r.json())
+        r = self._session.get("{}/proxy/network/api/s/{}/get/setting/guest_access".format(self._baseurl, self._site, verify=self._verify_ssl), data="json={}")
+        #print(r.content)
+        #exit(1)
         data = r.json()['data']
         #print(data)
         password = "error"
@@ -115,7 +117,7 @@ class API(object):
         data = {}
         data["x_password"] = password
         
-        url = self._baseurl + "/api/s/" + self._site + "/rest/setting/guest_access/"
+        url = self._baseurl + "/proxy/network/api/s/" + self._site + "/rest/setting/guest_access/"
 
         r = self._session.put("{}".format(url, verify=self._verify_ssl), data=json.dumps(data))
         
@@ -127,30 +129,30 @@ class API(object):
             self.login()
             return "error"
     
-    def list_clients(self, filters: Dict[str, Union[str, Pattern]]=None, order_by: str=None) -> list:
-        """
-        List all available clients from the api
+    # def list_clients(self, filters: Dict[str, Union[str, Pattern]]=None, order_by: str=None) -> list:
+    #     """
+    #     List all available clients from the api
 
-        :param filters: dict with valid key, value pairs, string supplied is compiled to a regular expression
-        :param order_by: order by a valid client key, defaults to '_id' if key is not found
-        :return: A list of clients on the format of a dict
-        """
+    #     :param filters: dict with valid key, value pairs, string supplied is compiled to a regular expression
+    #     :param order_by: order by a valid client key, defaults to '_id' if key is not found
+    #     :return: A list of clients on the format of a dict
+    #     """
 
-        r = self._session.get("{}/api/s/{}/stat/sta".format(self._baseurl, self._site, verify=self._verify_ssl), data="json={}")
-        self._current_status_code = r.status_code
+    #     r = self._session.get("{}/proxy/network/api/s/{}/stat/sta".format(self._baseurl, self._site, verify=self._verify_ssl), data="json={}")
+    #     self._current_status_code = r.status_code
         
-        if self._current_status_code == 401:
-            raise LoggedInException("Invalid login, or login has expired")
+    #     if self._current_status_code == 401:
+    #         raise LoggedInException("Invalid login, or login has expired")
 
-        data = r.json()['data']
+    #     data = r.json()['data']
 
-        if filters:
-            for term, value in filters.items():
-                value_re = value if isinstance(value, Pattern) else re.compile(value)
+    #     if filters:
+    #         for term, value in filters.items():
+    #             value_re = value if isinstance(value, Pattern) else re.compile(value)
 
-                data = [x for x in data if term in x.keys() and re.fullmatch(value_re, x[term])]
+    #             data = [x for x in data if term in x.keys() and re.fullmatch(value_re, x[term])]
 
-        if order_by:
-            data = sorted(data, key=lambda x: x[order_by] if order_by in x.keys() else x['_id'])
+    #     if order_by:
+    #         data = sorted(data, key=lambda x: x[order_by] if order_by in x.keys() else x['_id'])
 
-        return data
+    #     return data
