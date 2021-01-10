@@ -69,7 +69,8 @@ class API(object):
         try:
             response = self._session.post("{}/api/auth/login".format(self._baseurl), json=self._login_data, verify=self._verify_ssl)
             self._current_status_code = response.status_code
-            #print()
+            self.csrf_token = response.headers["x-csrf-token"]
+
             if self._current_status_code == 200:
                 self.connected = True
             if self._current_status_code == 400:
@@ -81,6 +82,27 @@ class API(object):
         except requests.exceptions.ConnectionError:
             self.connected = False
 
+        #Set headers
+        self._session.headers["Content-Type"] = "application/json"
+        #self._session.headers["Connection"] = "keep-alive"
+
+
+
+
+    def _send(self, endpoint, json={}, method="GET"):
+        url = self._baseurl + "/proxy/network/api/s/" + self._site + endpoint
+
+        #Passing in data switch to POST-request
+        if json:
+            method = "POST"
+            #Setting headers for the request
+            #Post specific headers
+            self._session.headers["x-csrf-token"] = self.csrf_token
+            self._session.headers["content-length"] = str(len(json))
+        
+        response = self._session.request(method, url, verify=self._verify_ssl, json=json)
+
+        return response
 
     def logout(self):
         """
@@ -88,71 +110,46 @@ class API(object):
 
         :return: None
         """
-        self._session.get("{}/logout".format(self._baseurl))
+        self._session.get("{}/api/auth/logout".format(self._baseurl))
         self._session.close()
 
 
     def get_guest_password(self):
         #Get request
+        r = self._send("/rest/setting/guest_access/")
 
-        r = self._session.get("{}/proxy/network/api/s/{}/get/setting/guest_access".format(self._baseurl, self._site, verify=self._verify_ssl), data="json={}")
-        #print(r.content)
-        #exit(1)
-        data = r.json()['data']
-        #print(data)
         password = "error"
         try:
+            data = r.json()['data']
             password = data[0]["x_password"]
         except IndexError:
             print("IndexError, logging in again")
             self.login()
-        return {"password": password}
+        return {"password": password}, 200
 
     def set_guest_password(self, password = None):
+        r = self._send("/rest/setting/guest_access/")
+
+        data = r.json()['data']
+        guest_access_id = data[0]["_id"]
+        current_password = data[0]["x_password"]
+        
+
+        if current_password == password:
+            return {"error": "Password is already set"}, 406
+
         if not password:
             #Get new password
             response = requests.get('https://passwordwolf.com/api/?upper=off&special=off&length=8&exclude=%3F!%3C%3Eli1I0OB8%60&repeat=1')
             password = response.json()[0]["password"]
-
-        data = {}
-        data["x_password"] = password
         
-        url = self._baseurl + "/proxy/network/api/s/" + self._site + "/rest/setting/guest_access/"
 
-        r = self._session.put("{}".format(url, verify=self._verify_ssl), data=json.dumps(data))
-        
+        r = self._send("/set/setting/guest_access/" + guest_access_id, {"x_password": password})
+
         if r.status_code == 200:
             newPW = r.json()["data"][0]["x_password"]
-            return {"password": newPW}
+            return {"password": newPW}, 200
         else:
             print("Error trying to login again")
             self.login()
             return "error"
-    
-    # def list_clients(self, filters: Dict[str, Union[str, Pattern]]=None, order_by: str=None) -> list:
-    #     """
-    #     List all available clients from the api
-
-    #     :param filters: dict with valid key, value pairs, string supplied is compiled to a regular expression
-    #     :param order_by: order by a valid client key, defaults to '_id' if key is not found
-    #     :return: A list of clients on the format of a dict
-    #     """
-
-    #     r = self._session.get("{}/proxy/network/api/s/{}/stat/sta".format(self._baseurl, self._site, verify=self._verify_ssl), data="json={}")
-    #     self._current_status_code = r.status_code
-        
-    #     if self._current_status_code == 401:
-    #         raise LoggedInException("Invalid login, or login has expired")
-
-    #     data = r.json()['data']
-
-    #     if filters:
-    #         for term, value in filters.items():
-    #             value_re = value if isinstance(value, Pattern) else re.compile(value)
-
-    #             data = [x for x in data if term in x.keys() and re.fullmatch(value_re, x[term])]
-
-    #     if order_by:
-    #         data = sorted(data, key=lambda x: x[order_by] if order_by in x.keys() else x['_id'])
-
-    #     return data

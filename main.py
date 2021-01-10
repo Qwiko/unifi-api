@@ -43,20 +43,25 @@ def show_Password():
     else:
         return render_template('password.html', data=UniFi_api.get_guest_password())
 
-@app.route('/password', methods=['GET', 'PUT'])
-def password():
+
+@app.route('/password', methods=['GET'])
+def get_password():
     status = getStatus()
     if status["status"] == "Disconnected":
-        return {"error": "Could not recieve password"}, 404
+        return {"error": "Could not recieve password, not logged in to UniFi"}, 404
 
-    if request.method == 'GET':        
-        return UniFi_api.get_guest_password()
-    else:
-        password = request.args.get('password')
-        if not password:
-            password = None
-        return UniFi_api.set_guest_password(password)
+    return UniFi_api.get_guest_password()
 
+@app.route('/password', methods=['PUT'])
+def set_password():
+    #Check status
+    status = getStatus()
+    if status["status"] == "Disconnected":
+        return {"error": "Could not recieve password, not logged in to UniFi"}, 404
+    
+    password = request.args.get('password')
+
+    return UniFi_api.set_guest_password(password)
 
 if __name__ == '__main__':
     #app.apscheduler.add_job(func=monthlypasswordchange, trigger="cron", day="1", id="monthlypasswordchange")
