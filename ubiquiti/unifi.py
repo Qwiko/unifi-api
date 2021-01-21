@@ -33,7 +33,7 @@ class API(object):
         """
         self._login_data['username'] = username
         self._login_data['password'] = password
-        self._login_data['remember'] = True
+        self._login_data['rememberMe'] = True
         self._site = site
         self._verify_ssl = verify_ssl
         self._baseurl = baseurl
@@ -69,8 +69,8 @@ class API(object):
         try:
             response = self._session.post("{}/api/auth/login".format(self._baseurl), json=self._login_data, verify=self._verify_ssl)
             self._current_status_code = response.status_code
-            self.csrf_token = response.headers["x-csrf-token"]
-
+            self.setHeaders(response)
+            #self._session.headers["x-csrf-token"] = response.headers["x-csrf-token"]
             if self._current_status_code == 200:
                 self.connected = True
             if self._current_status_code == 400:
@@ -84,7 +84,7 @@ class API(object):
 
         #Set headers
         self._session.headers["Content-Type"] = "application/json"
-        #self._session.headers["Connection"] = "keep-alive"
+        self._session.headers["Connection"] = "keep-alive"
 
 
 
@@ -95,13 +95,11 @@ class API(object):
         #Passing in data switch to POST-request
         if json:
             method = "POST"
-            #Setting headers for the request
-            #Post specific headers
-            self._session.headers["x-csrf-token"] = self.csrf_token
-            self._session.headers["content-length"] = str(len(json))
+        
+        self._session.headers["content-length"] = str(len(json))
         
         response = self._session.request(method, url, verify=self._verify_ssl, json=json)
-
+        self.setHeaders(response)
         return response
 
     def logout(self):
@@ -112,6 +110,13 @@ class API(object):
         """
         self._session.get("{}/api/auth/logout".format(self._baseurl))
         self._session.close()
+
+
+    def setHeaders(self, response):
+        #print(headers)
+        csrf_token =  response.headers.get("x-csrf-token")
+        if csrf_token:
+            self._session.headers["x-csrf-token"] = csrf_token
 
 
     def get_guest_password(self):
@@ -125,7 +130,14 @@ class API(object):
         except IndexError:
             print("IndexError, logging in again")
             self.login()
-        return {"password": password}, 200
+        
+        except json.decoder.JSONDecodeError:
+            print("JSON decoder error")
+            print("Content:")
+            print(r.content)
+            print()
+            return {"error": "JSON decoder error"}, 404
+        return {"password": password}
 
     def set_guest_password(self, password = None):
         r = self._send("/rest/setting/guest_access/")
@@ -148,7 +160,7 @@ class API(object):
 
         if r.status_code == 200:
             newPW = r.json()["data"][0]["x_password"]
-            return {"password": newPW}, 200
+            return {"password": newPW}
         else:
             print("Error trying to login again")
             self.login()
